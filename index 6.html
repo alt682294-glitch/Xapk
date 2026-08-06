@@ -1,0 +1,396 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APK Converter — XAPK & APKM to APK</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --accent-2: #818cf8;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --success: #34d399;
+            --error: #f87171;
+            --border: #334155;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 720px;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            background: var(--card);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.05);
+        }
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .drop-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+        .drop-text { font-size: 1.1rem; color: var(--text); }
+        .drop-hint { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+        .file-list {
+            margin-top: 1.5rem;
+            display: none;
+        }
+        .file-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .file-icon { font-size: 1.5rem; }
+        .file-info { flex: 1; }
+        .file-name { font-weight: 600; }
+        .file-size { color: var(--muted); font-size: 0.85rem; }
+        .btn {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1.4rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .progress {
+            margin-top: 1.5rem;
+            display: none;
+        }
+        .progress-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .progress-text { text-align: center; margin-top: 0.5rem; color: var(--muted); font-size: 0.9rem; }
+
+        .result {
+            margin-top: 1.5rem;
+            display: none;
+        }
+        .result-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+        .result-success { border-left: 4px solid var(--success); }
+        .result-error { border-left: 4px solid var(--error); }
+        .result-title { font-weight: 700; margin-bottom: 0.5rem; }
+        .result-msg { color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+        .download-link {
+            display: inline-block;
+            margin-top: 1rem;
+            background: var(--success);
+            color: #0f172a;
+            padding: 0.6rem 1.4rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .info-panel {
+            margin-top: 1.5rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: none;
+        }
+        .info-panel h3 { margin-bottom: 0.75rem; font-size: 1rem; }
+        .info-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .info-row:last-child { border-bottom: none; }
+        .info-key { color: var(--muted); }
+        .info-val { color: var(--text); font-weight: 500; }
+
+        .formats {
+            margin-top: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 480px) { .formats { grid-template-columns: 1fr; } }
+        .format-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+        .format-card h3 { font-size: 1rem; margin-bottom: 0.5rem; color: var(--accent); }
+        .format-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>APK Converter</h1>
+        <p class="subtitle">Convert XAPK and APKM bundles into standard APK files</p>
+
+        <div class="drop-zone" id="dropZone">
+            <input type="file" id="fileInput" accept=".xapk,.apkm">
+            <div class="drop-icon">📦</div>
+            <div class="drop-text">Drop your .xapk or .apkm file here</div>
+            <div class="drop-hint">or click to browse — max 500 MB</div>
+        </div>
+
+        <div class="file-list" id="fileList"></div>
+
+        <div class="progress" id="progressPanel">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-text" id="progressText">Uploading...</div>
+        </div>
+
+        <div class="info-panel" id="infoPanel">
+            <h3>📋 Archive Contents</h3>
+            <div id="infoContent"></div>
+        </div>
+
+        <div class="result" id="resultPanel">
+            <div class="result-box" id="resultBox">
+                <div class="result-title" id="resultTitle"></div>
+                <div class="result-msg" id="resultMsg"></div>
+                <a class="download-link" id="downloadLink" style="display:none">⬇ Download Package</a>
+            </div>
+        </div>
+
+        <div class="formats">
+            <div class="format-card">
+                <h3>📁 XAPK</h3>
+                <p>APKPure bundle format. A ZIP containing <code>base.apk</code>, optional split APKs, and OBB expansion data. We extract the base APK and package everything for you.</p>
+            </div>
+            <div class="format-card">
+                <h3>🔐 APKM</h3>
+                <p>APKMirror bundle format. Contains split APKs. DRM-free files are extracted directly. Encrypted APKMs require the official APKMirror Installer.</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            Files are processed server-side and deleted after conversion.<br>
+            Only upload apps you have the legal right to install.
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById("dropZone");
+        const fileInput = document.getElementById("fileInput");
+        const fileList = document.getElementById("fileList");
+        const progressPanel = document.getElementById("progressPanel");
+        const progressFill = document.getElementById("progressFill");
+        const progressText = document.getElementById("progressText");
+        const infoPanel = document.getElementById("infoPanel");
+        const infoContent = document.getElementById("infoContent");
+        const resultPanel = document.getElementById("resultPanel");
+        const resultBox = document.getElementById("resultBox");
+        const resultTitle = document.getElementById("resultTitle");
+        const resultMsg = document.getElementById("resultMsg");
+        const downloadLink = document.getElementById("downloadLink");
+
+        let currentFile = null;
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return "0 B";
+            const k = 1024;
+            const sizes = ["B", "KB", "MB", "GB"];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+        }
+
+        function showFile(file) {
+            currentFile = file;
+            fileList.innerHTML = `
+                <div class="file-item">
+                    <div class="file-icon">${file.name.endsWith(".xapk") ? "📦" : "🔐"}</div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatBytes(file.size)}</div>
+                    </div>
+                    <button class="btn" id="convertBtn">Convert</button>
+                </div>
+            `;
+            fileList.style.display = "block";
+            resultPanel.style.display = "none";
+            infoPanel.style.display = "none";
+
+            document.getElementById("convertBtn").addEventListener("click", () => {
+                peekThenConvert(file);
+            });
+        }
+
+        dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+        dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("drag-over");
+            const files = e.dataTransfer.files;
+            if (files.length) showFile(files[0]);
+        });
+        fileInput.addEventListener("change", (e) => {
+            if (e.target.files.length) showFile(e.target.files[0]);
+        });
+
+        async function peekThenConvert(file) {
+            progressPanel.style.display = "block";
+            progressFill.style.width = "20%";
+            progressText.textContent = "Reading archive...";
+
+            const peekForm = new FormData();
+            peekForm.append("file", file);
+
+            try {
+                const peekRes = await fetch("/api/info", { method: "POST", body: peekForm });
+                const peekData = await peekRes.json();
+                renderInfo(peekData);
+            } catch (e) {
+                console.warn("Peek failed, continuing with conversion");
+            }
+
+            progressFill.style.width = "40%";
+            progressText.textContent = "Converting...";
+
+            const form = new FormData();
+            form.append("file", file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/convert", true);
+            xhr.responseType = "blob";
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const pct = 40 + Math.round((e.loaded / e.total) * 50);
+                    progressFill.style.width = pct + "%";
+                    progressText.textContent = `Uploading... ${Math.round((e.loaded / e.total) * 100)}%`;
+                }
+            };
+
+            xhr.onload = () => {
+                progressFill.style.width = "100%";
+                progressText.textContent = "Done!";
+
+                if (xhr.status === 200) {
+                    const blob = xhr.response;
+                    const url = URL.createObjectURL(blob);
+                    const disposition = xhr.getResponseHeader("content-disposition");
+                    let fname = "converted.zip";
+                    if (disposition) {
+                        const match = disposition.match(/filename="?([^"]+)"?/);
+                        if (match) fname = match[1];
+                    }
+
+                    resultBox.className = "result-box result-success";
+                    resultTitle.textContent = "✅ Conversion Successful";
+                    resultMsg.textContent = `Your ${file.name.endsWith(".xapk") ? "XAPK" : "APKM"} has been processed. The download contains the base APK and any extracted assets.`;
+                    downloadLink.href = url;
+                    downloadLink.download = fname;
+                    downloadLink.style.display = "inline-block";
+                    resultPanel.style.display = "block";
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        let msg = "Conversion failed.";
+                        try {
+                            const j = JSON.parse(reader.result);
+                            msg = j.error || msg;
+                        } catch (e) {}
+                        resultBox.className = "result-box result-error";
+                        resultTitle.textContent = "❌ Conversion Failed";
+                        resultMsg.textContent = msg;
+                        downloadLink.style.display = "none";
+                        resultPanel.style.display = "block";
+                    };
+                    reader.readAsText(xhr.response);
+                }
+            };
+
+            xhr.onerror = () => {
+                resultBox.className = "result-box result-error";
+                resultTitle.textContent = "❌ Network Error";
+                resultMsg.textContent = "Could not reach the server. Make sure the backend is running.";
+                downloadLink.style.display = "none";
+                resultPanel.style.display = "block";
+            };
+
+            xhr.send(form);
+        }
+
+        function renderInfo(data) {
+            if (!data) return;
+            let html = "";
+            if (data.is_plain_zip === false) {
+                html += `<div class="info-row"><span class="info-key">Format</span><span class="info-val" style="color:var(--error)">Encrypted / Not a ZIP</span></div>`;
+                html += `<div class="info-row"><span class="info-key">Note</span><span class="info-val">${data.note || ""}</span></div>`;
+            } else {
+                html += `<div class="info-row"><span class="info-key">Format</span><span class="info-val">${data.format}</span></div>`;
+                html += `<div class="info-row"><span class="info-key">Total Files</span><span class="info-val">${data.total_files}</span></div>`;
+                html += `<div class="info-row"><span class="info-key">APK Files</span><span class="info-val">${data.apk_files.length}</span></div>`;
+                html += `<div class="info-row"><span class="info-key">OBB Files</span><span class="info-val">${data.obb_files.length}</span></div>`;
+                if (data.manifest && data.manifest.package_name) {
+                    html += `<div class="info-row"><span class="info-key">Package</span><span class="info-val">${data.manifest.package_name}</span></div>`;
+                }
+            }
+            infoContent.innerHTML = html;
+            infoPanel.style.display = "block";
+        }
+    </script>
+</body>
+</html>
